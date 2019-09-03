@@ -1,0 +1,7 @@
+_X. => {
+    answer();
+    wait(2);
+    playback(youRec);
+    Dial(PJSIP/777);
+    HangUp();
+}

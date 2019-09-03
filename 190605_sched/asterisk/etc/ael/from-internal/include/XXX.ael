@@ -1,0 +1,4 @@
+_XXX => {
+    Dial(PJSIP/${EXTEN});
+    HangUp();
+}

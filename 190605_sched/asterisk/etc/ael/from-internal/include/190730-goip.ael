@@ -1,0 +1,9 @@
+_190730#X. => {
+    set(CDR(userfield)=test);
+    // Answer();
+//    Record(asterisk-recording:wav);
+//    Playback(asterisk-recording);
+    Dial(PJSIP/1104${EXTEN:7}@1104);
+}
+
+

@@ -1,0 +1,5 @@
+projectId;projectName;projectNameDescribe;enableProject;setMinimumConnectSecond;setMaximumConnectSecond;setMinimumMinutePerDay;setMaximumMinutePerDay;setMinutePerMonth;setCountRepeatErrorPerDay;setCountAnsweredCallPerDay;setCountAnsweredCallPerMonth;setTimeSuccessCallSeconds;setSoundDir;restMinuteEveryDay;restMinuteEveryMonth;usedCallLimitNow;setOutgoingSchedulerTrunk;setSchedulerGroupId;createDatetime
+1;test;first test project;1;300;600;500;1000;40000;30;100;10000;15;;1;1;0;1;;;
+2;alex;second test project;1;400;600;727;1000;40000;30;100;10000;15;;1;1;0;0;;;
+3;evg;third test project;1;600;800;500;1000;40000;30;100;10000;15;;1;1;0;0;;;
+4;AAAAAAAA;bbbbbbb;1;300;600;500;1000;40000;30;100;10000;15;;1;1;0;0;;;

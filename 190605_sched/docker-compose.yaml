@@ -1,0 +1,243 @@
+version: '2.4'
+# example for asterConf msk 2019
+######################################################################
+networks: 
+ goipnet:
+  name: ${NETWORK_NAME}
+  driver: bridge
+  # internal: 'false'
+  driver_opts:
+   com.docker.network.bridge.name: ${NETWORK_NAME}
+  #  com.docker.network.bridge.enable_ip_masquerade: 'false'
+  ipam:
+   config:
+    - subnet: ${DOCKER_SUBNET}
+      gateway: ${DOCKER_GW}
+
+services:
+######################################################################
+ php:
+  networks:
+   goipnet:
+    ipv4_address: ${PHP_LOCALNET_IP}
+  image: ${PHP_IMAGE}
+  restart: always
+  container_name: ${PHP_NAME}
+  hostname: ${PHP_NAME}
+  env_file: 
+   - ./mysql/db.env
+   - ./asterisk/asterisk.env
+   - ./.env
+  # environment:
+  #  - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib_goip
+  volumes:
+   - "./php-fpm/php.ini:/usr/local/etc/php/conf.d/php.ini"
+   - "./web:${WWW_DIR}"
+ ######################################################################
+ nginx:
+  networks:
+   goipnet:
+    ipv4_address: ${NGINX_DOCKER_LOCALNET_IP}
+  image: nginx:alpine
+  depends_on:
+   - php
+  container_name: ${NGINX_HOST}
+  hostname: ${NGINX_HOST}
+  env_file: 
+   - ./mysql/db.env
+   - ./asterisk/asterisk.env
+   - ./.env
+  # environment:
+  #  - NGINX_HOST=${NGINX_HOST}
+  #  - PHP_NAME=${PHP_NAME}
+  volumes:
+   - ./nginx/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+   - ./nginx/etc:/etc/nginx/conf.d
+   - ./nginx/configPHP:/configPHP
+   - ./nginx/ssl:/etc/ssl
+   - ./web:${WWW_DIR}
+  ports:
+   - ${NGINX_PORT_GOIP_EXT}:${NGINX_PORT_GOIP_IN}/tcp
+   - ${NGINX_PORT_SMB_EXT}:${NGINX_PORT_SMB_IN}/tcp
+   - ${NGINX_PORT_CDR_EXT}:${NGINX_PORT_CDR_IN}/tcp
+   - ${NGINX_PORT_PROVISION_EXT}:${NGINX_PORT_PROVISION_IN}/tcp
+   - ${NGINX_PORT_YII2_EXT}:${NGINX_PORT_YII2_IN}/tcp
+  restart: always
+  entrypoint: ["/docker-entrypoint.sh"]
+  # entrypoint: ["/bin/sh"]
+
+   #  - mysqldb
+######################################################################
+ db:
+  networks:
+   goipnet:
+    ipv4_address: ${IP_MYSQL}
+  ports:
+   - ${MYSQL_EXT_PORT}:3306/tcp
+  env_file: 
+   - ./mysql/db.env
+   - ./.env
+  container_name: ${NAME_MYSQL}
+  hostname: ${NAME_MYSQL}
+  image: vsamov/mysql-5.1.73
+  volumes:
+   - ./mysql/dbdata:/var/lib/mysql
+  restart: always
+######################################################################
+ radm:
+  networks:
+   goipnet:
+    ipv4_address: ${RADM_DOCKER_LOCALNET_IP}
+  image: ${GOIP_DOCKER_IMAGE}
+  security_opt:
+   - apparmor:unconfined
+   - seccomp:unconfined
+  container_name: ${RADM_NAME}
+  hostname: ${RADM_NAME}
+  volumes:
+   - ./hyberToneRadmin/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+   - ./hyberToneScheduler/dump:/dump
+  env_file: 
+   - ./.env
+   - ./hyberToneRadmin/radmin.env
+  working_dir: /
+  restart: always
+  ports:
+   - ${RADM_RADM_WEBPORT}:${RADM_RADM_WEBPORT}/tcp
+   - ${RADM_CLIPORT}:${RADM_CLIPORT}/tcp
+  entrypoint: ["/docker-entrypoint.sh"]
+
+######################################################################
+ sms:
+  depends_on:
+   - "db"
+   - "nginx"
+  networks:
+   goipnet:
+    ipv4_address: ${GOIP_DOCKER_LOCALNET_IP}
+  privileged: true
+  image: ${GOIP_DOCKER_IMAGE}
+  # image: cr80/goip-fpm:v.0.2.1
+  container_name: ${GOIP_NAME}
+  hostname: ${GOIP_NAME}
+  env_file: 
+   - ./mysql/db.env
+   - ./.env
+  working_dir: /
+  restart: always
+  ports:
+   - ${GOIPCRONPORT}:${GOIPCRONPORT}/udp
+  volumes:
+   - ./hyberToneGoip/etc/goipcrone.template.conf:/usr/local/etc/goipcrone.template.conf:ro
+   - ./hyberToneGoip/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+  entrypoint: [ "/docker-entrypoint.sh"]
+
+######################################################################
+
+ scheduler:
+  depends_on:
+   - "db"
+   - "nginx"
+  networks:
+   goipnet:
+    ipv4_address: ${SMB_DOCKER_LOCALNET_IP}
+  privileged: true
+  image: ${GOIP_DOCKER_IMAGE}
+  container_name: ${SMB_NAME}
+  hostname: ${SMB_NAME}
+  env_file: 
+   - ./mysql/db.env
+   - ./.env
+  working_dir: /
+  restart: always
+  ports:
+   - ${SMB_SCHED_UDP}:${SMB_SCHED_UDP}/udp
+   - ${SMB_SCHED_TCP}:${SMB_SCHED_TCP}/tcp
+  volumes:
+   - ./hyberToneScheduler/etc/smbsvr.template.conf:/etc/smbsvr.template.conf:ro
+   - ./hyberToneScheduler/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+   - ./hyberToneScheduler/dump:/dump
+  entrypoint: [ "/docker-entrypoint.sh"]
+
+######################################################################
+ xchange:
+  depends_on:
+   - "db"
+   - "nginx"
+  networks:
+   goipnet:
+    ipv4_address: ${XCHANGED_DOCKER_LOCALNET_IP}
+  privileged: true
+  image: ${GOIP_DOCKER_IMAGE}
+  container_name: ${XCHANGED_NAME}
+  hostname: ${XCHANGED_NAME}
+  env_file: 
+   - ./mysql/db.env
+   - ./.env
+  working_dir: /
+  restart: always
+  volumes:
+   - ./hyberToneXchange/etc/xchange.template.conf:/usr/local/etc/xchange.template.conf:ro
+   - ./hyberToneXchange/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+  entrypoint: [ "/docker-entrypoint.sh"]
+
+###################################################################### 
+ php-cli:
+  networks:
+   goipnet:
+    ipv4_address: ${PHP_CLI_LOCALNET_IP}
+  image: cr80/php-fpm5.6.40:v.0.0.6
+  restart: always
+  container_name: ${PHP_CLI_NAME}
+  hostname: ${PHP_CLI_NAME}
+  env_file: 
+   - ./mysql/db.env
+   - ./asterisk/asterisk.env
+   - ./.env
+  volumes:
+   - ./controlGoip/etc/php.ini:/usr/local/etc/php/conf.d/php.ini
+   - ./controlGoip/scripts:/usr/local/scripts
+   - ./controlGoip/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+  working_dir: /usr/local/scripts
+  entrypoint: [ "/docker-entrypoint.sh"]
+
+ ######################################################################
+ asterisk:
+  networks:
+   goipnet:
+    ipv4_address: ${ASTERISK_DOCKER_LOCALNET_IP}
+  image: ${ASTERISK_IMAGE}
+  hostname: ${ASTERISK_NAME}
+  container_name: ${ASTERISK_NAME}
+  env_file:
+   - ./.env
+   - ./mysql/db.env
+   - ./asterisk/asterisk.env
+   - ./controlGoip/goip.env
+  # restart: always
+  ports:
+   - ${ASTERISK_EXT_PORT}:${ASTERISK_EXT_PORT}/udp
+  volumes:
+   - ./asterisk/etc:/etc/asterisk
+   - ./asterisk/etc.template:/etc.template:ro
+   - ./asterisk/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+   - ./asterisk/sounds:/var/lib/asterisk/sounds
+  entrypoint: ["/docker-entrypoint.sh"]
+
+  #################
+ portainer:
+  networks:
+    goipnet:
+      ipv4_address: '${PORTAINER_LOCALNET_IP}'
+  image: portainer/portainer
+  restart: always
+  container_name: 'portainer'
+  hostname: 'portainer'
+  env_file:
+    - ./.env
+  volumes:
+    - '/var/run/docker.sock:/var/run/docker.sock'
+    - './portainer_data:/data'
+  ports:
+  - 9001:9000
+  #################

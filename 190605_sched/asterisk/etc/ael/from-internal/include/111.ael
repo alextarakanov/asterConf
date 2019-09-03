@@ -1,0 +1,11 @@
+111 => {
+    // record(youRec.wav,10,10,q);
+    playback(youRec);
+    playback(test);
+    playback(bell_ring2);
+    
+    for (x=0; ${x} < 3; x=${x} + 1) {
+        Verbose(x is ${x} !);
+    }
+    HangUp();
+}
